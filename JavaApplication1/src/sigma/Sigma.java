@@ -15,6 +15,7 @@ import java.security.NoSuchProviderException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.security.SecureRandom;
+import org.bouncycastle.crypto.macs.CFBBlockCipherMac;
 /**
  *
  * @author Pawel
@@ -22,17 +23,18 @@ import java.security.SecureRandom;
 public class Sigma {
     private DHParameterSpec dhParams;
     private KeyPairGenerator keyGen;
-    
+    private BigInteger p;
+    private BigInteger g;
     public Sigma(){
         int gV = 73;
         int pV = 47;
-        BigInteger p = new BigInteger(Integer.toString(pV));
-        BigInteger g = new BigInteger(Integer.toString(gV));
+        this.p = new BigInteger(Integer.toString(pV));
+        this.g = new BigInteger(Integer.toString(gV));
         
         int bitLength = 512; // 512 bits
         SecureRandom rnd = new SecureRandom();
-        p = BigInteger.probablePrime(bitLength, rnd);
-        g = BigInteger.probablePrime(bitLength, rnd);
+        this.p = BigInteger.probablePrime(bitLength, rnd);
+        this.g = BigInteger.probablePrime(bitLength, rnd);
         
         this.dhParams = new DHParameterSpec(g, p);
         try {
@@ -47,5 +49,13 @@ public class Sigma {
     
     public KeyPairGenerator getKPGen(){
         return this.keyGen;
+    }
+    
+    public BigInteger returnG(){
+        return g;
+    }
+    
+    public BigInteger returnP(){
+        return p;
     }
 }
