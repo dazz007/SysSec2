@@ -15,6 +15,7 @@ import java.security.NoSuchProviderException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.security.SecureRandom;
+import java.security.spec.AlgorithmParameterSpec;
 import org.bouncycastle.crypto.macs.CFBBlockCipherMac;
 /**
  *
@@ -25,7 +26,7 @@ public class Sigma {
     private KeyPairGenerator keyGen;
     private BigInteger p;
     private BigInteger g;
-    public Sigma(){
+    public Sigma() throws NoSuchProviderException, NoSuchAlgorithmException{
         int gV = 73;
         int pV = 47;
         this.p = new BigInteger(Integer.toString(pV));
@@ -38,13 +39,13 @@ public class Sigma {
         
         this.dhParams = new DHParameterSpec(g, p);
         try {
-            this.keyGen = KeyPairGenerator.getInstance("DiffieHellman");
-            this.keyGen.initialize(dhParams);
+            this.keyGen = KeyPairGenerator.getInstance("DSA", "SUN");
+            
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(Sigma.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InvalidAlgorithmParameterException ex) {
-            Logger.getLogger(Sigma.class.getName()).log(Level.SEVERE, null, ex);
         }
+        SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
+        this.keyGen.initialize(1024,random);
     }
     
     public KeyPairGenerator getKPGen(){
