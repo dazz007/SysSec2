@@ -215,3 +215,6 @@ pip-log.txt
 .mr.developer.cfg
 /JavaApplication1/nbproject/private/
 /Sigma2Basic/nbproject/private/
+/TreeSimulation/nbproject/private/
+/SigmaServer/nbproject/private/
+/SigmaClient/nbproject/private/
