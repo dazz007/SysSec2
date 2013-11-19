@@ -137,7 +137,6 @@ public class Client {
         data = gPOWxMODp.add(valueOtherParty).toByteArray();
         dsa.update(data);
         this.realSig = dsa.sign();
-
     }
     
     public boolean verifyMAC(byte [] MAC, String message) throws NoSuchAlgorithmException, UnsupportedEncodingException{

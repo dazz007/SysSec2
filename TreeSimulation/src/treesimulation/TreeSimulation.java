@@ -14,14 +14,12 @@ import visidia.simulation.process.messages.IntegerMessage;
  */
 public class TreeSimulation extends SynchronousAlgorithm {
 
-    
-    
     private static final int colorsCount = 6;
     
     private static final String[] colorsVisidia = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
         "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "Z", "Y", "X", "W", "V",
 			"U", "T", "S", "R", "Q", "P", "O", "N", "M", "L", "K", "J", "I", "H", "G",  "F", "E", "D", "C", "B", "A"};
-    private int nrOfBits = 16;
+    private final int nrOfBits = 16;
     private static int defaultColorCount = 0;
     private static final int rounds = 6;
     private static final int root = 0;

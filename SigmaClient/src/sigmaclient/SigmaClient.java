@@ -14,7 +14,12 @@ import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.net.UnknownHostException;
-
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.SignatureException;
+import process.Data2Send;
+import process.Process;
 enum e_state{ SENDG, SENDP, SENDGPOX, GETALL, SENDALL, END};
 /**
  *
@@ -25,13 +30,13 @@ public class SigmaClient {
     public Socket clientSocket;
     public ObjectOutputStream oos;
     public ObjectInputStream ois;
-    private ProcessClass processClass;
+    private Process processClass;
     /**
      * @param host
      * @param args the command line arguments
      */
     public SigmaClient(String host, int portNumber) throws IOException{
-        this.processClass = new ProcessClass();
+        this.processClass = new Process();
         this.processClass.generatePandG();
         this.clientSocket = new Socket(host, portNumber);
         this.oos = new ObjectOutputStream(this.clientSocket.getOutputStream());
@@ -41,62 +46,58 @@ public class SigmaClient {
     public void sendG() throws IOException{
         this.oos.writeObject(this.processClass.getG());
         this.oos.flush();
-        System.out.println("Wysłano G");
+        System.out.println("Wysłano G od klienta do serwera");
     }
     
     public void sendP() throws IOException{
         this.oos.writeObject(this.processClass.getP());
         this.oos.flush();
-        System.out.println("Wysłano P");
+        System.out.println("Wysłano P od klienta do serwera");
     }
     
     public void sendGpowX() throws IOException{
-        this.processClass.generatePandG();
+        this.processClass.computeGpowX();
         this.oos.writeObject(this.processClass.getGpowX());
         this.oos.flush();
-        System.out.println("Wysłano G pow X");
+        System.out.println("Wysłano G pow X od klienta do serwera");
     }
     
-    public void getG() throws IOException, ClassNotFoundException{
-        System.out.println((BigInteger) ois.readObject());
+    public void getAllData() throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeyException, NoSuchProviderException, SignatureException{
+        this.processClass.setD2sotherside((Data2Send) ois.readObject());
+        if(this.processClass.verify()){
+            processClass.generateKeyPair();
+            processClass.generateMac("Wiadomosc od strony klienta blallaldsksladj!");
+            processClass.signTheValues();
+            oos.writeObject(this.processClass.getData2Send());
+            oos.flush();
+        }else{
+            oos.writeObject(this.processClass.badVerification());
+            oos.flush();
+        }
     }
     
-    public static void main(String[] args) throws IOException, ClassNotFoundException {
+    public static void main(String[] args) throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeyException, NoSuchProviderException, SignatureException {
         e_state state = e_state.SENDG;
         String hostName = "localhost";
         int portNumber = 4444;
         SigmaClient sc = new SigmaClient(hostName, portNumber);
-//        ProcessClass processClass = new ProcessClass();
-//        processClass.generatePandG();
-//        Socket clientSocket = new Socket(hostName, portNumber);
-//        ObjectOutputStream oos = new ObjectOutputStream(clientSocket.getOutputStream());
         
         while(!state.equals(e_state.END)){
             switch(state){
                 case SENDG:
                     sc.sendG();
-//                    oos.writeObject(processClass.getG());
-//                    oos.flush();
-//                    System.out.println("Wysłano G");
                     state = e_state.SENDP;
                     break;
                 case SENDP:
                     sc.sendP();
-//                    oos.writeObject(processClass.getP());
-//                    oos.flush();
-//                    System.out.println("Wysłano P");
                     state = e_state.SENDGPOX;
                     break;
                 case SENDGPOX:
                     sc.sendGpowX();
-//                    processClass.computeGpowX();
-//                    oos.writeObject(processClass.getGpowX());
-//                    oos.flush();
-//                    System.out.println("Wysłano P");
                     state = e_state.GETALL;
                     break;
                 case GETALL:
-                    sc.getG();
+                    sc.getAllData();
                     state = e_state.END;
                     break;
                 default:
