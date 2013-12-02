@@ -12,6 +12,7 @@ import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
@@ -30,6 +31,19 @@ import javax.crypto.SecretKey;
  */
 public class Process {
    private BigInteger p;
+   private BigInteger p_schnr;
+   private BigInteger q_schnr;
+   private BigInteger a_schnr;
+   private BigInteger secret_key_schnr;
+   private BigInteger public_key_schnr;
+   
+   private BigInteger p_schnr_other_side;
+   private BigInteger q_schnr_other_side;
+   private BigInteger a_schnr_other_side;
+   private BigInteger public_key_schnr_other_side;
+   private BigInteger e_other_side;
+   private BigInteger s_other_side;
+   private BigInteger message_other_side;
     private BigInteger g;
     private BigInteger x;
     private KeyPair keyPair;
@@ -220,20 +234,104 @@ public class Process {
         }
     }
     
-    public void schnorrSignature(){
-        int zzLength = 512/8; 
-        byte[] zz = random.fetch(null, zzLength); 
-        BigInteger r = new BigInteger(zz).mod(q);
-        byte[] u = g.modPow(r, p).toByteArray();
-        
-        byte[] hu = ByteUtil.append(M, u, M.length, u.length);
-        hash.init(PRIVATE_BITS_KEY_SIZE); 
-        hash.update(hu, hu.length);
-        byte[] zero = new byte[1];
-        byte[] resume = hash.getHash(null);
-        BigInteger e = new BigInteger(ByteUtil.append(zero, resume, 1, resume.length)).mod(q); // mod q é o segredo!
-        BigInteger s = r.subtract(x.multiply(e)).mod(q);
-        
-        return new BigInteger[]{e, s};
+    
+    public void setSchnorrDataFromOtherSide(BigInteger[] param){
+        public_key_schnr_other_side = param[0];
+        q_schnr_other_side = param[1];
+        p_schnr_other_side = param[2];
+        a_schnr_other_side = param[3];
+        e_other_side = param[4];
+        s_other_side = param[5];
+        message_other_side = param[6];
     }
+    
+    public BigInteger[] initialiseSchnorrKeys() throws NoSuchAlgorithmException{
+        //Idea: use a subgroup of Zp of size q (q << p)
+        final int pV = 73;
+        SecureRandom rnd = new SecureRandom();
+        final int q_ditis = 512;
+        final int p_min_digit = 511;
+        final int dig_extra = 64;
+        this.q_schnr = BigInteger.probablePrime(q_ditis, rnd);
+        
+        boolean foundPrime = false;
+        //calculate p_schnr such that p_schnr-1|q_schnr
+        while(!foundPrime){
+            BigInteger temp = new BigInteger(dig_extra, rnd);
+            this.p_schnr = temp.multiply(q_schnr).add(BigInteger.ONE);
+            if(p_schnr.bitLength() > p_min_digit && p_schnr.isProbablePrime(1)){
+                foundPrime = true;
+            }
+        }
+        //calculate a_schnr such that a_schnr^q_schnr mod p_schnr = 1
+        a_schnr = new BigInteger("1");
+        BigInteger exp = p_schnr.subtract(BigInteger.ONE ).divide(q_schnr);
+        while(a_schnr.equals(BigInteger.ONE)){
+            BigInteger t = new BigInteger(p_schnr.bitLength()+1, rnd).add(BigInteger.ONE);
+            if(t.compareTo(p_schnr)!= - 1)
+                continue;
+            a_schnr = t.modPow(exp, p_schnr);
+        }
+        
+        System.out.println("A to: "+a_schnr);
+
+        do{
+            secret_key_schnr = new BigInteger(q_ditis,rnd);
+        }while(secret_key_schnr.compareTo(q_schnr.subtract(BigInteger.ONE)) == 1);
+        System.out.println("Q: "+q_schnr);
+        System.out.println("SK: "+secret_key_schnr);
+        public_key_schnr = a_schnr.modPow(secret_key_schnr, p_schnr);
+        
+        
+        final int bits = dig_extra/8;
+        BigInteger r = new BigInteger(bits, rnd).mod(q_schnr);
+        BigInteger k = a_schnr.modPow(r, p_schnr);
+        BigInteger message = GpowX.add(GpowXotherSide).add(k);
+        
+        MessageDigest digester = MessageDigest.getInstance("MD5");
+        byte[] byte_msg = message.toByteArray();
+        digester.update(byte_msg);
+        byte[] digest = digester.digest();
+        BigInteger e = new BigInteger(digest).mod(q_schnr);
+        BigInteger s = r.subtract(secret_key_schnr.multiply(e)).mod(q_schnr);
+        return new BigInteger[]{public_key_schnr,q_schnr,p_schnr,a_schnr,e,s,GpowX.add(GpowXotherSide)};
+    }
+    
+    public BigInteger[] signSchnorr(String msg) throws NoSuchAlgorithmException{
+        this.msg = msg;
+        int dig_extra = 64/8;
+        SecureRandom rnd = new SecureRandom();
+        BigInteger r = new BigInteger(dig_extra, rnd).mod(q_schnr);
+        BigInteger k = a_schnr.modPow(r, p_schnr);
+        String message = this.msg + k.toString();
+        MessageDigest digester = MessageDigest.getInstance("MD5");
+        byte[] byte_msg = message.getBytes();
+        digester.update(byte_msg);
+        byte[] digest = digester.digest();
+        BigInteger e = new BigInteger(digest).mod(q_schnr);
+        BigInteger s = r.subtract(secret_key_schnr.multiply(e)).mod(q_schnr);
+        return new BigInteger[]{e,s};
+    }
+    
+    public boolean verifySchnorr() throws NoSuchAlgorithmException{
+        
+        BigInteger u = a_schnr_other_side.modPow(s_other_side, p_schnr_other_side);
+        BigInteger factor = public_key_schnr_other_side.modPow(e_other_side, p_schnr_other_side);
+        u = u.multiply(factor).mod(p_schnr_other_side);
+        BigInteger message = message_other_side.add(u);
+//        String message = this.msg + u.toString();
+        MessageDigest digester = MessageDigest.getInstance("MD5");
+        byte[] byte_msg = message.toByteArray();
+        digester.update(byte_msg);
+        byte[] digest = digester.digest();
+        BigInteger ev = new BigInteger(digest).mod(q_schnr_other_side);
+        
+        if (ev.equals(e_other_side)){
+            System.out.println("Podpis Schnorra zweryfikowany");
+            return true;
+        }else{
+           System.out.println("NIE DZIAŁA SCHNORR");
+           return false;
+        }
+    } 
 }

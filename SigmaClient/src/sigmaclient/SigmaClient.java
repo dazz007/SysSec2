@@ -20,7 +20,7 @@ import java.security.NoSuchProviderException;
 import java.security.SignatureException;
 import process.Data2Send;
 import process.Process;
-enum e_state{ SENDG, SENDP, SENDGPOX, GETALL, SENDALL, END};
+enum e_state{ SENDG, SENDP, SENDGPOX, GETSCHNORR, GETALL, SENDALL, END};
 /**
  *
  * @author Pawel
@@ -43,7 +43,7 @@ public class SigmaClient {
         this.ois = new ObjectInputStream(this.clientSocket.getInputStream());
     }
     
-    public void sendG() throws IOException{
+    public void sendG() throws IOException, NoSuchAlgorithmException{
         this.oos.writeObject(this.processClass.getG());
         this.oos.flush();
         System.out.println("Wysłano G od klienta do serwera");
@@ -62,6 +62,13 @@ public class SigmaClient {
         System.out.println("Wysłano G pow X od klienta do serwera");
     }
     
+    public void getSchnorrData() throws IOException, ClassNotFoundException, NoSuchAlgorithmException{
+        this.processClass.setSchnorrDataFromOtherSide((BigInteger[]) ois.readObject());
+        if(this.processClass.verifySchnorr()){
+            System.out.println("SCHNORR PO STRONIE KLIENTA ZOSTAŁ ZWERYFIKOWANY!");
+        }
+    }
+    
     public void getAllData() throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeyException, NoSuchProviderException, SignatureException{
         this.processClass.setD2sotherside((Data2Send) ois.readObject());
         if(this.processClass.verify()){
@@ -71,6 +78,7 @@ public class SigmaClient {
             oos.writeObject(this.processClass.getData2Send());
             oos.flush();
         }else{
+            
             oos.writeObject(this.processClass.badVerification());
             oos.flush();
         }
@@ -94,6 +102,10 @@ public class SigmaClient {
                     break;
                 case SENDGPOX:
                     sc.sendGpowX();
+                    state = e_state.GETSCHNORR;
+                    break;
+                case GETSCHNORR:
+                    sc.getSchnorrData();
                     state = e_state.GETALL;
                     break;
                 case GETALL:

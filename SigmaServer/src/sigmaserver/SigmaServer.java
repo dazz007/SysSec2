@@ -27,7 +27,7 @@ import process.Process;
 
 enum e_state {
 
-    GETG, GETP, GETGPOWX, SENDSIGN, SENDALL, GETALL, END
+    GETG, GETP, GETGPOWX, SENDSIGN, SENDALL,SENDMAC, SENDSCHNORR, GETALL, END
 };
 
 /**
@@ -76,10 +76,17 @@ public class SigmaServer {
 
     public void sendMacAndSignature() throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, NoSuchProviderException, IOException{
         processClass.generateMac("Wiadomosc od strony servera!");
+        
         processClass.signTheValues();
         oos.writeObject(this.processClass.getData2Send());
         oos.flush();
     }
+    
+    public void sendSchnorr() throws IOException, NoSuchAlgorithmException{
+        oos.writeObject(this.processClass.initialiseSchnorrKeys());
+        oos.flush();
+    }
+    
     
     public void sendMac() throws IOException{
         oos.writeObject(this.processClass.getMAC());
@@ -117,8 +124,16 @@ public class SigmaServer {
                     
                     state = e_state.GETGPOWX;
                     break;
+                
                 case GETGPOWX:
                     ss.setGpowXOtherSide();
+                    state = e_state.SENDSCHNORR;
+                    break;
+                case SENDSCHNORR:
+                    ss.sendSchnorr();
+                    state = e_state.SENDMAC;
+                    break;
+                case SENDMAC:
                     ss.sendMacAndSignature();
                     state = e_state.GETALL;
                     break;
