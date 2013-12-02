@@ -63,14 +63,20 @@ public class SigmaClient {
     }
     
     public void getSchnorrData() throws IOException, ClassNotFoundException, NoSuchAlgorithmException{
+        this.processClass.setD2sotherside((Data2Send) ois.readObject());
         this.processClass.setSchnorrDataFromOtherSide((BigInteger[]) ois.readObject());
         if(this.processClass.verifySchnorr()){
             System.out.println("SCHNORR PO STRONIE KLIENTA ZOSTAŁ ZWERYFIKOWANY!");
+            oos.writeObject(this.processClass.initialiseSchnorrKeys(true));
+            oos.flush();
+        }else{
+            oos.writeObject(this.processClass.initialiseSchnorrKeys(false));
+            oos.flush();
         }
     }
     
     public void getAllData() throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeyException, NoSuchProviderException, SignatureException{
-        this.processClass.setD2sotherside((Data2Send) ois.readObject());
+//        this.processClass.setD2sotherside((Data2Send) ois.readObject());
         if(this.processClass.verify()){
             processClass.generateKeyPair();
             processClass.generateMac("Wiadomosc od strony klienta blallaldsksladj!");

@@ -245,8 +245,12 @@ public class Process {
         message_other_side = param[6];
     }
     
-    public BigInteger[] initialiseSchnorrKeys() throws NoSuchAlgorithmException{
-        //Idea: use a subgroup of Zp of size q (q << p)
+    public BigInteger[] initialiseSchnorrKeys(boolean stat) throws NoSuchAlgorithmException{
+        
+        if(!stat){
+            return new BigInteger[]{new BigInteger("-1"),
+                new BigInteger("-1"),new BigInteger("-1"),new BigInteger("-1"),new BigInteger("-1"),new BigInteger("-1"),new BigInteger("-1")};
+        }
         final int pV = 73;
         SecureRandom rnd = new SecureRandom();
         final int q_ditis = 512;
@@ -314,7 +318,15 @@ public class Process {
     }
     
     public boolean verifySchnorr() throws NoSuchAlgorithmException{
-        
+        if(a_schnr_other_side.compareTo(new BigInteger("-1")) == 0
+                && s_other_side.compareTo(new BigInteger("-1")) == 0
+                && p_schnr_other_side.compareTo(new BigInteger("-1")) == 0
+                && e_other_side.compareTo(new BigInteger("-1")) == 0
+                && message_other_side.compareTo(new BigInteger("-1")) == 0
+                && q_schnr_other_side.compareTo(new BigInteger("-1")) == 0){
+            System.out.println("Weryfikacja po drugiej stronie nie przebiegła pomyślnie");
+            return false;
+        }
         BigInteger u = a_schnr_other_side.modPow(s_other_side, p_schnr_other_side);
         BigInteger factor = public_key_schnr_other_side.modPow(e_other_side, p_schnr_other_side);
         u = u.multiply(factor).mod(p_schnr_other_side);

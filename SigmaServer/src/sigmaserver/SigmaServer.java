@@ -27,7 +27,7 @@ import process.Process;
 
 enum e_state {
 
-    GETG, GETP, GETGPOWX, SENDSIGN, SENDALL,SENDMAC, SENDSCHNORR, GETALL, END
+    GETG, GETP, GETGPOWX, SENDSIGN, SENDALL,SENDMAC, VERIFYSCHNORR, SENDSCHNORR, GETALL, END
 };
 
 /**
@@ -83,7 +83,7 @@ public class SigmaServer {
     }
     
     public void sendSchnorr() throws IOException, NoSuchAlgorithmException{
-        oos.writeObject(this.processClass.initialiseSchnorrKeys());
+        oos.writeObject(this.processClass.initialiseSchnorrKeys(true));
         oos.flush();
     }
     
@@ -106,6 +106,15 @@ public class SigmaServer {
         }
     }
     
+    public void getSchnorrData() throws IOException, ClassNotFoundException, NoSuchAlgorithmException{
+        this.processClass.setSchnorrDataFromOtherSide((BigInteger[]) ois.readObject());
+        if(this.processClass.verifySchnorr()){
+            System.out.println("SCHNORR PO STRONIE SERWERA ZOSTAŁ ZWERYFIKOWANY!");
+        }else{
+            System.out.println("SCHNORR PO STRONIE SERWERA NIE ZOSTAŁ ZWERYFIKOWANY!");
+        }
+    }
+    
     /**
      * @param args the command line arguments
      */
@@ -121,20 +130,22 @@ public class SigmaServer {
                     break;
                 case GETP:
                     ss.setP();
-                    
                     state = e_state.GETGPOWX;
                     break;
-                
                 case GETGPOWX:
                     ss.setGpowXOtherSide();
-                    state = e_state.SENDSCHNORR;
-                    break;
-                case SENDSCHNORR:
-                    ss.sendSchnorr();
                     state = e_state.SENDMAC;
                     break;
                 case SENDMAC:
                     ss.sendMacAndSignature();
+                    state = e_state.SENDSCHNORR;
+                    break;
+                case SENDSCHNORR:
+                    ss.sendSchnorr();
+                    state = e_state.VERIFYSCHNORR;
+                    break;
+                case VERIFYSCHNORR:
+                    ss.getSchnorrData();
                     state = e_state.GETALL;
                     break;
                 case GETALL:
